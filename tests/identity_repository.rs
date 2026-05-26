@@ -1,5 +1,5 @@
 #[tokio::test]
-async fn user_repository_inserts_and_reads_user() {
+async fn identity_repository_schema_smoke_checks_users_table() {
     let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     let pool = sqlx::PgPool::connect(&database_url)
         .await
