@@ -55,6 +55,8 @@ project_title_repl="$(escape_perl_replacement "$project_title")"
 
 cp -a "$source_root" "$target_dir"
 rm -rf "$target_dir/.git" "$target_dir/target"
+rm -rf "$target_dir/docs/superpowers"
+rm -f "$target_dir/tests/init_project.rs"
 
 cargo_target_dir="$(mktemp -d /tmp/axum-init-target.XXXXXX)"
 trap 'rm -rf "$cargo_target_dir"' EXIT

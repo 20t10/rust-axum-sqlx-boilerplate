@@ -1,6 +1,5 @@
 use std::{
-    fs,
-    io,
+    fs, io,
     path::{Path, PathBuf},
     process::Command,
     time::{SystemTime, UNIX_EPOCH},
@@ -103,7 +102,11 @@ fn init_project_generates_a_clean_sibling_repo() {
     );
 
     let generated = workspace.path().join("demo-app");
-    assert!(generated.is_dir(), "generated repo should exist at {}", generated.display());
+    assert!(
+        generated.is_dir(),
+        "generated repo should exist at {}",
+        generated.display()
+    );
 
     let cargo_toml = generated.join("Cargo.toml");
     let readme = generated.join("README.md");
@@ -111,8 +114,9 @@ fn init_project_generates_a_clean_sibling_repo() {
 
     assert!(read(&cargo_toml).contains("name = \"demo-app\""));
     assert!(read(&readme).contains("# Demo App"));
-    assert!(read(&env_example).contains("POSTGRES_DB=demo-app"));
-    assert!(read(&env_example).contains("DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/demo-app"));
+    assert!(read(&env_example).contains("POSTGRES_DB=demo_app"));
+    assert!(read(&env_example)
+        .contains("DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/demo_app"));
     assert!(read(&env_example).contains("RUST_LOG=info,demo_app=debug"));
 
     assert_no_legacy_identity_tokens(&cargo_toml);
