@@ -3,7 +3,10 @@ name = "identity"
 edition.workspace = true
 version.workspace = true
 license.workspace = true
-publish = false
 
-[lib]
-path = "src/lib.rs"
+[dependencies]
+async-trait.workspace = true
+serde.workspace = true
+shared-kernel = { path = "../../shared-kernel" }
+thiserror.workspace = true
+uuid.workspace = true
