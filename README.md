@@ -3,7 +3,7 @@
 Initial workspace skeleton for an Axum boilerplate project in progress.
 
 ## Setup
-
+0. `make init-project name=my-project`
 1. `make setup`
 2. `make up`
 3. `make migrate`
@@ -28,6 +28,7 @@ Initial workspace skeleton for an Axum boilerplate project in progress.
 - `make docs`
 - `make ci`
 - `make create-module name=billing`
+
 
 ## Docs
 
