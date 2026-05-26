@@ -3,10 +3,6 @@ name = "shared-kernel"
 edition.workspace = true
 version.workspace = true
 license.workspace = true
-publish = false
-
-[lib]
-path = "src/lib.rs"
 
 [dependencies]
 chrono.workspace = true
