@@ -6,6 +6,7 @@ license.workspace = true
 
 [dependencies]
 async-trait.workspace = true
+axum.workspace = true
 serde.workspace = true
 shared-kernel = { path = "../../shared-kernel" }
 thiserror.workspace = true

@@ -11,6 +11,7 @@ members = [
   "crates/shared-kernel",
   "crates/building-blocks",
   "crates/modules/identity",
+  "crates/modules/billing",
 ]
 resolver = "2"
 

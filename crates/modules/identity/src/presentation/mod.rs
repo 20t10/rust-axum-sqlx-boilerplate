@@ -1,1 +1,1 @@
-// Minimal compile shim for planned module structure.
+pub mod http;

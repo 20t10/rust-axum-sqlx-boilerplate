@@ -5,7 +5,7 @@ use identity::application::{
 
 #[tokio::test]
 async fn register_handler_returns_tokens() {
-    let handler = RegisterHandler::default();
+    let handler = RegisterHandler;
 
     let result = handler
         .handle(RegisterCommand {
@@ -22,7 +22,7 @@ async fn register_handler_returns_tokens() {
 
 #[tokio::test]
 async fn register_handler_returns_validation_error_for_missing_email() {
-    let handler = RegisterHandler::default();
+    let handler = RegisterHandler;
 
     let result = handler
         .handle(RegisterCommand {

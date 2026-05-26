@@ -3,6 +3,7 @@ use shared_kernel::ids::UserId;
 use crate::domain::value_objects::{email::Email, password_hash::PasswordHash};
 
 #[derive(Clone, Debug)]
+#[allow(dead_code)]
 pub struct User {
     id: UserId,
     email: Email,
