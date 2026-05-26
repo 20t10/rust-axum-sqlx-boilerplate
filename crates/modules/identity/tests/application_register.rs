@@ -1,8 +1,11 @@
-use identity::application::commands::register::{RegisterCommand, RegisterHandler};
+use identity::application::{
+    commands::register::{RegisterCommand, RegisterHandler},
+    errors::IdentityApplicationError,
+};
 
 #[tokio::test]
 async fn register_handler_returns_tokens() {
-    let handler = RegisterHandler::for_tests();
+    let handler = RegisterHandler::default();
 
     let result = handler
         .handle(RegisterCommand {
@@ -12,8 +15,23 @@ async fn register_handler_returns_tokens() {
         })
         .await;
 
-    assert!(result.is_ok());
-    let auth = result.unwrap();
-    assert!(!auth.access_token.is_empty());
-    assert!(!auth.refresh_token.is_empty());
+    let auth = result.expect("register should succeed");
+    assert_eq!(auth.access_token, "access-admin");
+    assert_eq!(auth.refresh_token, "refresh-token");
+}
+
+#[tokio::test]
+async fn register_handler_returns_validation_error_for_missing_email() {
+    let handler = RegisterHandler::default();
+
+    let result = handler
+        .handle(RegisterCommand {
+            email: String::new(),
+            password: "secret123".into(),
+            role: "admin".into(),
+        })
+        .await;
+
+    let err = result.expect_err("empty email should fail validation");
+    assert!(matches!(err, IdentityApplicationError::Validation));
 }

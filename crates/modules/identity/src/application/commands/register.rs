@@ -11,10 +11,6 @@ pub struct RegisterCommand {
 pub struct RegisterHandler;
 
 impl RegisterHandler {
-    pub fn for_tests() -> Self {
-        Self
-    }
-
     pub async fn handle(
         &self,
         command: RegisterCommand,
