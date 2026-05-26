@@ -3,7 +3,11 @@ name = "building-blocks"
 edition.workspace = true
 version.workspace = true
 license.workspace = true
-publish = false
 
-[lib]
-path = "src/lib.rs"
+[dependencies]
+jsonwebtoken.workspace = true
+serde.workspace = true
+sqlx.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
