@@ -1,10 +1,13 @@
-use identity::domain::{entities::user::User, value_objects::email::Email};
+use identity::domain::{
+    entities::user::User,
+    value_objects::{email::Email, password_hash::PasswordHash},
+};
 
 #[test]
 fn user_registration_creates_active_user() {
     let user = User::register(
         Email::parse("dev@example.com").unwrap(),
-        "hashed-password".into(),
+        PasswordHash("hashed-password".into()),
         "admin".into(),
     );
 
