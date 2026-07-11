@@ -180,6 +180,7 @@ fn dotenv_interpolation_index(contents: &str) -> Option<usize> {
         if comment {
             if character == '\n' {
                 comment = false;
+                comment_start = true;
             }
             continue;
         }

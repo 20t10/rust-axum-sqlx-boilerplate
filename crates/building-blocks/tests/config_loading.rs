@@ -165,6 +165,13 @@ fn permits_dollars_in_comments() {
 }
 
 #[test]
+fn permits_dollars_in_consecutive_comment_lines() {
+    let fixture = TempEnv::new(&format!("{COMPLETE_ENV}# first\n# costs $5\n"));
+
+    load_required_dotenv_from(&fixture.path().join(".env"), Vec::new()).unwrap();
+}
+
+#[test]
 fn rejects_dollars_after_non_comment_hashes() {
     let contents = COMPLETE_ENV.replace("RUST_LOG=info", "RUST_LOG=info#cost$5");
     let fixture = TempEnv::new(&contents);
