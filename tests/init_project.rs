@@ -66,6 +66,20 @@ fn run_init_project(cwd: &Path) -> std::process::Output {
         .expect("make should run")
 }
 
+fn make_fixture(prefix: &str) -> (TempWorkspace, PathBuf) {
+    let source_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let workspace = TempWorkspace::create(prefix).expect("workspace");
+    let fixture = workspace.path().join("fixture");
+    fs::create_dir_all(&fixture).expect("fixture dir");
+    fs::copy(source_root.join("Makefile"), fixture.join("Makefile")).expect("copy Makefile");
+    fs::copy(
+        source_root.join(".env.example"),
+        fixture.join(".env.example"),
+    )
+    .expect("copy .env.example");
+    (workspace, fixture)
+}
+
 fn assert_no_legacy_identity_tokens(path: &Path) {
     let contents = read(path);
     assert!(
@@ -175,6 +189,64 @@ fn init_project_refuses_to_overwrite_an_existing_target() {
     );
     assert!(
         String::from_utf8_lossy(&output.stderr).contains("already exists"),
+        "stderr:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[test]
+fn bare_make_runs_default_setup_without_an_existing_env() {
+    let (_workspace, fixture) = make_fixture("axum-make-default");
+
+    let output = Command::new("make")
+        .current_dir(&fixture)
+        .output()
+        .expect("make should run");
+
+    assert!(
+        output.status.success(),
+        "stdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(
+        read(fixture.join(".env")),
+        read(fixture.join(".env.example"))
+    );
+}
+
+#[test]
+fn mixed_exempt_and_non_exempt_make_goals_require_env() {
+    let (_workspace, fixture) = make_fixture("axum-make-mixed-goals");
+
+    let output = Command::new("make")
+        .args(["-n", "init-project", "dev", "name=demo-app"])
+        .current_dir(&fixture)
+        .output()
+        .expect("make should run");
+
+    assert!(!output.status.success());
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("missing required .env; run 'make setup'"),
+        "stderr:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(!fixture.join(".env").exists());
+}
+
+#[test]
+fn non_exempt_make_goal_requires_env() {
+    let (_workspace, fixture) = make_fixture("axum-make-required-env");
+
+    let output = Command::new("make")
+        .args(["-n", "dev"])
+        .current_dir(&fixture)
+        .output()
+        .expect("make should run");
+
+    assert!(!output.status.success());
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("missing required .env; run 'make setup'"),
         "stderr:\n{}",
         String::from_utf8_lossy(&output.stderr)
     );

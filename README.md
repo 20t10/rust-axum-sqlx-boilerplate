@@ -16,6 +16,8 @@ Run `make setup` to create the mandatory `.env` from `.env.example`. The API ref
 
 All values in `.env.example` are examples. Replace database credentials and JWT secrets before using the project outside local development.
 
+Because `make seed` sources `.env` through the shell before invoking `psql`, keep `.env` entries shell-compatible (`KEY=VALUE`, with shell quoting or escaping where needed).
+
 ## Commands
 
 - `make setup`

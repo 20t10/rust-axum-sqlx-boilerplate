@@ -1,9 +1,10 @@
 .PHONY: setup dev up down reset-db migrate seed fmt lint test test-unit test-integration check docs ci create-module init-project
 
-ifneq ($(filter setup init-project,$(MAKECMDGOALS)),)
-else
+ifneq (,$(strip $(MAKECMDGOALS)))
+ifneq (,$(filter-out setup init-project,$(MAKECMDGOALS)))
 ifeq (,$(wildcard .env))
 $(error missing required .env; run 'make setup')
+endif
 endif
 endif
 
