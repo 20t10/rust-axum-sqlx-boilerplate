@@ -1,68 +1,115 @@
-use building_blocks::config::AppConfig;
-use std::sync::Mutex;
+use building_blocks::config::{load_required_dotenv_from, ConfigError};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    time::{SystemTime, UNIX_EPOCH},
+};
 
-static ENV_LOCK: Mutex<()> = Mutex::new(());
+const COMPLETE_ENV: &str = "APP_HOST=127.0.0.1\nAPP_PORT=4100\nPOSTGRES_USER=postgres\nPOSTGRES_PASSWORD=postgres\nPOSTGRES_DB=axum_boilerplate\nPOSTGRES_PORT=5432\nDATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/axum_boilerplate\nJWT_ACCESS_SECRET=test-access\nJWT_REFRESH_SECRET=test-refresh\nJWT_ACCESS_TTL_MINUTES=15\nJWT_REFRESH_TTL_DAYS=30\nRUST_LOG=info\n";
 
-fn set_common_test_env() {
-    std::env::set_var("APP_HOST", env_or("TEST_APP_HOST", "127.0.0.1"));
-    std::env::set_var("APP_PORT", env_or("TEST_APP_PORT", "3000"));
-    std::env::set_var(
-        "DATABASE_URL",
-        env_or("TEST_DATABASE_URL", &default_database_url()),
-    );
-    std::env::set_var(
-        "JWT_ACCESS_SECRET",
-        env_or("TEST_JWT_ACCESS_SECRET", "test-access"),
-    );
-    std::env::set_var(
-        "JWT_REFRESH_SECRET",
-        env_or("TEST_JWT_REFRESH_SECRET", "test-refresh"),
-    );
-    std::env::set_var(
-        "JWT_ACCESS_TTL_MINUTES",
-        env_or("TEST_JWT_ACCESS_TTL_MINUTES", "15"),
-    );
-    std::env::set_var(
-        "JWT_REFRESH_TTL_DAYS",
-        env_or("TEST_JWT_REFRESH_TTL_DAYS", "30"),
-    );
+struct TempEnv {
+    dir: PathBuf,
 }
 
-fn env_or(name: &str, default: &str) -> String {
-    std::env::var(name).unwrap_or_else(|_| default.to_owned())
+impl TempEnv {
+    fn new(contents: &str) -> Self {
+        let id = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let dir = std::env::temp_dir().join(format!("strict-dotenv-{}-{id}", std::process::id()));
+        fs::create_dir(&dir).unwrap();
+        fs::write(dir.join(".env"), contents).unwrap();
+        Self { dir }
+    }
+
+    fn path(&self) -> &Path {
+        &self.dir
+    }
 }
 
-fn default_database_url() -> String {
-    let user = env_or("TEST_DB_USER", "postgres");
-    let password = env_or("TEST_DB_PASSWORD", "postgres");
-    let host = env_or("TEST_DB_HOST", "127.0.0.1");
-    let port = env_or("TEST_DB_PORT", "5432");
-    let database = env_or("TEST_DB_NAME", "axum_boilerplate");
-
-    format!("postgres://{user}:{password}@{host}:{port}/{database}")
+impl Drop for TempEnv {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.dir);
+    }
 }
 
 #[test]
-fn config_reads_port_and_database_url() {
-    let _guard = ENV_LOCK.lock().expect("env lock");
-    set_common_test_env();
-
-    let config = AppConfig::from_env().expect("config should load");
-
-    assert_eq!(config.app_host, "127.0.0.1");
-    assert_eq!(config.app_port, 3000);
-    assert!(config.database_url.contains("axum_boilerplate"));
-    assert_eq!(config.jwt_settings().access_secret, "test-access");
-    assert_eq!(config.jwt_settings().refresh_secret, "test-refresh");
+fn loads_complete_dotenv_and_builds_socket_address() {
+    let fixture = TempEnv::new(COMPLETE_ENV);
+    let config = load_required_dotenv_from(&fixture.path().join(".env"), Vec::new()).unwrap();
+    assert_eq!(config.socket_addr().unwrap().to_string(), "127.0.0.1:4100");
 }
 
 #[test]
-fn config_rejects_invalid_numeric_values() {
-    let _guard = ENV_LOCK.lock().expect("env lock");
-    set_common_test_env();
-    std::env::set_var("APP_PORT", env_or("TEST_INVALID_APP_PORT", "not-a-port"));
+fn rejects_missing_dotenv_file() {
+    let fixture = TempEnv::new(COMPLETE_ENV);
+    let error =
+        load_required_dotenv_from(&fixture.path().join("missing.env"), Vec::new()).unwrap_err();
+    assert!(matches!(error, ConfigError::DotenvFile { .. }));
+}
 
-    let error = AppConfig::from_env().expect_err("invalid numeric config should fail");
+#[test]
+fn rejects_duplicate_dotenv_keys_without_leaking_values() {
+    let fixture = TempEnv::new(&format!(
+        "{COMPLETE_ENV}JWT_ACCESS_SECRET=do-not-leak\nAPP_PORT=9999\n"
+    ));
+    let error = load_required_dotenv_from(&fixture.path().join(".env"), Vec::new()).unwrap_err();
+    assert!(
+        matches!(&error, ConfigError::DuplicateDotenvKeys(keys) if keys == &vec!["APP_PORT".to_owned(), "JWT_ACCESS_SECRET".to_owned()])
+    );
+    assert!(!error.to_string().contains("do-not-leak"));
+}
 
-    assert!(error.to_string().contains("APP_PORT"));
+#[test]
+fn rejects_sorted_environment_collisions_without_leaking_values() {
+    let fixture = TempEnv::new(COMPLETE_ENV);
+    let error = load_required_dotenv_from(
+        &fixture.path().join(".env"),
+        vec!["JWT_ACCESS_SECRET".to_owned(), "APP_PORT".to_owned()],
+    )
+    .unwrap_err();
+    assert!(
+        matches!(&error, ConfigError::EnvironmentCollision(keys) if keys == &vec!["APP_PORT".to_owned(), "JWT_ACCESS_SECRET".to_owned()])
+    );
+    assert!(!error.to_string().contains("test-access"));
+}
+
+#[test]
+fn rejects_missing_blank_invalid_and_non_positive_values() {
+    let cases = [
+        (COMPLETE_ENV.replace("RUST_LOG=info\n", ""), "RUST_LOG"),
+        (
+            COMPLETE_ENV.replace(
+                "DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/axum_boilerplate",
+                "DATABASE_URL=   ",
+            ),
+            "DATABASE_URL",
+        ),
+        (
+            COMPLETE_ENV.replace("APP_PORT=4100", "APP_PORT=nope"),
+            "APP_PORT",
+        ),
+        (
+            COMPLETE_ENV.replace("JWT_ACCESS_TTL_MINUTES=15", "JWT_ACCESS_TTL_MINUTES=0"),
+            "JWT_ACCESS_TTL_MINUTES",
+        ),
+        (
+            COMPLETE_ENV.replace("APP_HOST=127.0.0.1", "APP_HOST=localhost"),
+            "APP_HOST",
+        ),
+    ];
+    for (contents, key) in cases {
+        let fixture = TempEnv::new(&contents);
+        let error =
+            load_required_dotenv_from(&fixture.path().join(".env"), Vec::new()).unwrap_err();
+        assert!(error.to_string().contains(key), "unexpected error: {error}");
+    }
+}
+
+#[test]
+fn rejects_malformed_dotenv() {
+    let fixture = TempEnv::new("'unterminated=value\n");
+    let error = load_required_dotenv_from(&fixture.path().join(".env"), Vec::new()).unwrap_err();
+    assert!(matches!(error, ConfigError::DotenvSyntax { .. }));
 }

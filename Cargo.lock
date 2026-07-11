@@ -182,6 +182,7 @@ dependencies = [
 name = "building-blocks"
 version = "0.1.0"
 dependencies = [
+ "dotenvy",
  "jsonwebtoken",
  "serde",
  "sqlx",
