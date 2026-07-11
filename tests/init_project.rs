@@ -111,6 +111,7 @@ fn init_project_generates_a_clean_sibling_repo() {
     let cargo_toml = generated.join("Cargo.toml");
     let readme = generated.join("README.md");
     let env_example = generated.join(".env.example");
+    let compose = generated.join("docker-compose.yml");
 
     assert!(read(&cargo_toml).contains("name = \"demo-app\""));
     assert!(read(&readme).contains("# Demo App"));
@@ -118,6 +119,36 @@ fn init_project_generates_a_clean_sibling_repo() {
     assert!(read(&env_example)
         .contains("DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/demo_app"));
     assert!(read(&env_example).contains("RUST_LOG=info,demo_app=debug"));
+
+    let env_example_contents = read(&env_example);
+    for key in [
+        "APP_HOST",
+        "APP_PORT",
+        "POSTGRES_USER",
+        "POSTGRES_PASSWORD",
+        "POSTGRES_DB",
+        "POSTGRES_PORT",
+        "DATABASE_URL",
+        "JWT_ACCESS_SECRET",
+        "JWT_REFRESH_SECRET",
+        "JWT_ACCESS_TTL_MINUTES",
+        "JWT_REFRESH_TTL_DAYS",
+        "RUST_LOG",
+    ] {
+        assert!(
+            env_example_contents
+                .lines()
+                .any(|line| line.starts_with(&format!("{key}="))),
+            ".env.example should contain {key}"
+        );
+    }
+
+    let compose_contents = read(&compose);
+    assert!(compose_contents.contains("${POSTGRES_USER:?set POSTGRES_USER in .env}"));
+    assert!(compose_contents.contains("${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}"));
+    assert!(compose_contents.contains("${POSTGRES_DB:?set POSTGRES_DB in .env}"));
+    assert!(compose_contents.contains("${POSTGRES_PORT:?set POSTGRES_PORT in .env}"));
+    assert!(!compose_contents.contains(":-"));
 
     assert_no_legacy_identity_tokens(&cargo_toml);
     assert_no_legacy_identity_tokens(&readme);

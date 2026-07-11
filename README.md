@@ -10,6 +10,12 @@ Initial workspace skeleton for an Axum boilerplate project in progress.
 4. `make seed`
 5. `make dev`
 
+## Configuration
+
+Run `make setup` to create the mandatory `.env` from `.env.example`. The API refuses to start when `.env` is missing, malformed, incomplete, or contains a key that is already exported in the process environment. Keep runtime values in `.env`; do not export the same keys in your shell. Errors list conflicting key names but never their values.
+
+All values in `.env.example` are examples. Replace database credentials and JWT secrets before using the project outside local development.
+
 ## Commands
 
 - `make setup`

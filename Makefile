@@ -1,5 +1,12 @@
 .PHONY: setup dev up down reset-db migrate seed fmt lint test test-unit test-integration check docs ci create-module init-project
 
+ifneq ($(filter setup init-project,$(MAKECMDGOALS)),)
+else
+ifeq (,$(wildcard .env))
+$(error missing required .env; run 'make setup')
+endif
+endif
+
 setup:
 	cp -n .env.example .env || true
 
@@ -20,7 +27,7 @@ migrate:
 	sqlx migrate run
 
 seed:
-	psql $$DATABASE_URL -f seeds/dev.sql
+	@set -a; . ./.env; set +a; psql "$$DATABASE_URL" -f seeds/dev.sql
 
 fmt:
 	cargo fmt --all
