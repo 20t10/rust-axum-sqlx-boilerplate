@@ -113,3 +113,28 @@ fn rejects_malformed_dotenv() {
     let error = load_required_dotenv_from(&fixture.path().join(".env"), Vec::new()).unwrap_err();
     assert!(matches!(error, ConfigError::DotenvSyntax { .. }));
 }
+
+#[test]
+fn rejects_dotenv_interpolation_without_reading_the_process_environment() {
+    for interpolation in ["$PATH", "${PATH}"] {
+        let secret = format!("ordinary-value-{interpolation}-must-not-leak");
+        let contents = COMPLETE_ENV.replace("RUST_LOG=info", &format!("RUST_LOG={secret}"));
+        let fixture = TempEnv::new(&contents);
+
+        let error =
+            load_required_dotenv_from(&fixture.path().join(".env"), Vec::new()).unwrap_err();
+
+        assert!(matches!(&error, ConfigError::DotenvInterpolation { .. }));
+        assert!(!error.to_string().contains(&secret));
+        assert!(!format!("{error:?}").contains(&secret));
+        assert!(std::error::Error::source(&error).is_none());
+    }
+}
+
+#[test]
+fn permits_dollar_signs_that_are_not_dotenv_interpolation() {
+    let contents = COMPLETE_ENV.replace("RUST_LOG=info", "RUST_LOG=costs-$-5");
+    let fixture = TempEnv::new(&contents);
+
+    load_required_dotenv_from(&fixture.path().join(".env"), Vec::new()).unwrap();
+}

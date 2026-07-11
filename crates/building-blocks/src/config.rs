@@ -30,6 +30,8 @@ pub enum ConfigError {
     },
     #[error("invalid dotenv syntax in {path} at index {index}")]
     DotenvSyntax { path: PathBuf, index: usize },
+    #[error("dotenv interpolation is not supported in {path} at index {index}")]
+    DotenvInterpolation { path: PathBuf, index: usize },
     #[error("duplicate keys in dotenv file: {0:?}")]
     DuplicateDotenvKeys(Vec<String>),
     #[error("dotenv keys already exist in process environment: {0:?}")]
@@ -115,7 +117,22 @@ fn parse_required_dotenv(
     path: &Path,
     process_keys: impl IntoIterator<Item = String>,
 ) -> Result<(AppConfig, BTreeMap<String, String>), ConfigError> {
-    let iterator = dotenvy::from_path_iter(path).map_err(|error| map_dotenv_error(path, error))?;
+    let contents = std::fs::read_to_string(path).map_err(|source| ConfigError::DotenvFile {
+        path: path.to_owned(),
+        source,
+    })?;
+
+    // dotenvy resolves `$NAME` and `${NAME}` from std::env while parsing. This loader's
+    // file-based entry point is intentionally pure, so reject interpolation syntax before
+    // dotenvy sees any source text. The error retains only the byte index, never the line/value.
+    if let Some(index) = dotenv_interpolation_index(&contents) {
+        return Err(ConfigError::DotenvInterpolation {
+            path: path.to_owned(),
+            index,
+        });
+    }
+
+    let iterator = dotenvy::from_read_iter(contents.as_bytes());
     let mut values = BTreeMap::new();
     let mut duplicates = BTreeSet::new();
 
@@ -148,6 +165,20 @@ fn parse_required_dotenv(
 
     let config = config_from_values(&values)?;
     Ok((config, values))
+}
+
+fn dotenv_interpolation_index(contents: &str) -> Option<usize> {
+    let mut chars = contents.char_indices().peekable();
+    while let Some((index, character)) = chars.next() {
+        if character == '$'
+            && chars
+                .peek()
+                .is_some_and(|(_, next)| *next == '{' || next.is_alphanumeric())
+        {
+            return Some(index);
+        }
+    }
+    None
 }
 
 fn map_dotenv_error(path: &Path, error: dotenvy::Error) -> ConfigError {
