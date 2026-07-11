@@ -132,9 +132,27 @@ fn rejects_dotenv_interpolation_without_reading_the_process_environment() {
 }
 
 #[test]
-fn permits_dollar_signs_that_are_not_dotenv_interpolation() {
-    let contents = COMPLETE_ENV.replace("RUST_LOG=info", "RUST_LOG=costs-$-5");
-    let fixture = TempEnv::new(&contents);
+fn rejects_every_unescaped_dollar_that_dotenvy_treats_as_substitution() {
+    for value in ["costs-$-5", "trailing-$"] {
+        let contents = COMPLETE_ENV.replace("RUST_LOG=info", &format!("RUST_LOG={value}"));
+        let fixture = TempEnv::new(&contents);
 
-    load_required_dotenv_from(&fixture.path().join(".env"), Vec::new()).unwrap();
+        let error =
+            load_required_dotenv_from(&fixture.path().join(".env"), Vec::new()).unwrap_err();
+
+        assert!(matches!(&error, ConfigError::DotenvInterpolation { .. }));
+        assert!(!error.to_string().contains(value));
+        assert!(!format!("{error:?}").contains(value));
+        assert!(std::error::Error::source(&error).is_none());
+    }
+}
+
+#[test]
+fn permits_literal_dollars_that_dotenvy_does_not_substitute() {
+    for value in [r"costs-\$5", "'costs-$5'"] {
+        let contents = COMPLETE_ENV.replace("RUST_LOG=info", &format!("RUST_LOG={value}"));
+        let fixture = TempEnv::new(&contents);
+
+        load_required_dotenv_from(&fixture.path().join(".env"), Vec::new()).unwrap();
+    }
 }

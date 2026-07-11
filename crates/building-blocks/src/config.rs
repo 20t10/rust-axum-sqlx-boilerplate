@@ -122,9 +122,11 @@ fn parse_required_dotenv(
         source,
     })?;
 
-    // dotenvy resolves `$NAME` and `${NAME}` from std::env while parsing. This loader's
-    // file-based entry point is intentionally pure, so reject interpolation syntax before
-    // dotenvy sees any source text. The error retains only the byte index, never the line/value.
+    // dotenvy enters substitution mode for every unescaped `$` outside single quotes, even
+    // a trailing `$` or `$-`. This loader's file-based entry point is intentionally pure, so
+    // reject those dollars before dotenvy sees any source text. Escaped and single-quoted
+    // dollars remain supported because dotenvy treats them as literals. The error retains
+    // only the byte index, never the line/value.
     if let Some(index) = dotenv_interpolation_index(&contents) {
         return Err(ConfigError::DotenvInterpolation {
             path: path.to_owned(),
@@ -168,14 +170,29 @@ fn parse_required_dotenv(
 }
 
 fn dotenv_interpolation_index(contents: &str) -> Option<usize> {
-    let mut chars = contents.char_indices().peekable();
-    while let Some((index, character)) = chars.next() {
-        if character == '$'
-            && chars
-                .peek()
-                .is_some_and(|(_, next)| *next == '{' || next.is_alphanumeric())
-        {
-            return Some(index);
+    let mut single_quoted = false;
+    let mut double_quoted = false;
+    let mut escaped = false;
+
+    for (index, character) in contents.char_indices() {
+        if single_quoted {
+            if character == '\'' {
+                single_quoted = false;
+            }
+            continue;
+        }
+
+        if escaped {
+            escaped = false;
+            continue;
+        }
+
+        match character {
+            '\\' => escaped = true,
+            '\'' if !double_quoted => single_quoted = true,
+            '"' => double_quoted = !double_quoted,
+            '$' => return Some(index),
+            _ => {}
         }
     }
     None
