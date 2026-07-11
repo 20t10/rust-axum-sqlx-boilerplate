@@ -156,3 +156,20 @@ fn permits_literal_dollars_that_dotenvy_does_not_substitute() {
         load_required_dotenv_from(&fixture.path().join(".env"), Vec::new()).unwrap();
     }
 }
+
+#[test]
+fn permits_dollars_in_comments() {
+    let fixture = TempEnv::new(&format!("{COMPLETE_ENV}# costs $5\n"));
+
+    load_required_dotenv_from(&fixture.path().join(".env"), Vec::new()).unwrap();
+}
+
+#[test]
+fn rejects_dollars_after_non_comment_hashes() {
+    let contents = COMPLETE_ENV.replace("RUST_LOG=info", "RUST_LOG=info#cost$5");
+    let fixture = TempEnv::new(&contents);
+
+    let error = load_required_dotenv_from(&fixture.path().join(".env"), Vec::new()).unwrap_err();
+
+    assert!(matches!(error, ConfigError::DotenvInterpolation { .. }));
+}

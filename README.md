@@ -16,7 +16,9 @@ Run `make setup` to create the mandatory `.env` from `.env.example`. The API ref
 
 All values in `.env.example` are examples. Replace database credentials and JWT secrets before using the project outside local development.
 
-Because `make seed` sources `.env` through the shell before invoking `psql`, keep `.env` entries shell-compatible (`KEY=VALUE`, with shell quoting or escaping where needed).
+Dotenv interpolation is not supported. To include a literal dollar sign in a value, use single quotes (`KEY='costs-$5'`) or escaping (`KEY=costs-\$5`).
+
+Because `make migrate` and `make seed` source `.env` through the shell before invoking their tools, keep `.env` entries shell-compatible (`KEY=VALUE`, with shell quoting or escaping where needed).
 
 ## Commands
 

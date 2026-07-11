@@ -1,5 +1,6 @@
 use std::{
     fs, io,
+    os::unix::fs::PermissionsExt,
     path::{Path, PathBuf},
     process::Command,
     time::{SystemTime, UNIX_EPOCH},
@@ -129,6 +130,10 @@ fn init_project_generates_a_clean_sibling_repo() {
 
     assert!(read(&cargo_toml).contains("name = \"demo-app\""));
     assert!(read(&readme).contains("# Demo App"));
+    let readme_contents = read(&readme);
+    assert!(readme_contents.contains("interpolation is not supported"));
+    assert!(readme_contents.contains("single quotes"));
+    assert!(readme_contents.contains("escaping"));
     assert!(read(&env_example).contains("POSTGRES_DB=demo_app"));
     assert!(read(&env_example)
         .contains("DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/demo_app"));
@@ -250,4 +255,48 @@ fn non_exempt_make_goal_requires_env() {
         "stderr:\n{}",
         String::from_utf8_lossy(&output.stderr)
     );
+}
+
+#[test]
+fn migrate_sources_database_url_from_dotenv_for_sqlx() {
+    let (_workspace, fixture) = make_fixture("axum-make-migrate-env");
+    let bin = fixture.join("bin");
+    fs::create_dir(&bin).expect("bin dir");
+    let sqlx = bin.join("sqlx");
+    fs::write(
+        &sqlx,
+        "#!/bin/sh\nprintf '%s' \"$DATABASE_URL\" > \"$CAPTURE_FILE\"\n",
+    )
+    .expect("fake sqlx");
+    fs::set_permissions(&sqlx, fs::Permissions::from_mode(0o755)).expect("executable fake sqlx");
+
+    let database_url = "postgres://fixture:secret@localhost:5432/fixture";
+    fs::write(
+        fixture.join(".env"),
+        format!("DATABASE_URL={database_url}\n"),
+    )
+    .expect("fixture dotenv");
+    let capture = fixture.join("captured-database-url");
+    let path = format!(
+        "{}:{}",
+        bin.display(),
+        std::env::var("PATH").unwrap_or_default()
+    );
+
+    let output = Command::new("make")
+        .arg("migrate")
+        .current_dir(&fixture)
+        .env("PATH", path)
+        .env("CAPTURE_FILE", &capture)
+        .env_remove("DATABASE_URL")
+        .output()
+        .expect("make should run");
+
+    assert!(
+        output.status.success(),
+        "stdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(read(capture), database_url);
 }

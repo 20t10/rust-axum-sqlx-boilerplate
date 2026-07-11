@@ -172,18 +172,29 @@ fn parse_required_dotenv(
 fn dotenv_interpolation_index(contents: &str) -> Option<usize> {
     let mut single_quoted = false;
     let mut double_quoted = false;
+    let mut comment_start = true;
+    let mut comment = false;
     let mut escaped = false;
 
     for (index, character) in contents.char_indices() {
+        if comment {
+            if character == '\n' {
+                comment = false;
+            }
+            continue;
+        }
+
         if single_quoted {
             if character == '\'' {
                 single_quoted = false;
             }
+            comment_start = false;
             continue;
         }
 
         if escaped {
             escaped = false;
+            comment_start = false;
             continue;
         }
 
@@ -191,9 +202,11 @@ fn dotenv_interpolation_index(contents: &str) -> Option<usize> {
             '\\' => escaped = true,
             '\'' if !double_quoted => single_quoted = true,
             '"' => double_quoted = !double_quoted,
+            '#' if !double_quoted && comment_start => comment = true,
             '$' => return Some(index),
             _ => {}
         }
+        comment_start = character.is_whitespace();
     }
     None
 }

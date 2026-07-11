@@ -25,7 +25,7 @@ reset-db:
 	docker compose up -d postgres
 
 migrate:
-	sqlx migrate run
+	@set -a; . ./.env; set +a; sqlx migrate run
 
 seed:
 	@set -a; . ./.env; set +a; psql "$$DATABASE_URL" -f seeds/dev.sql
