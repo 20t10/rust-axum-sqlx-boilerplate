@@ -17,3 +17,4 @@ billing = { path = "../../crates/modules/billing" }
 tokio.workspace = true
 tower-http.workspace = true
 tracing.workspace = true
+thiserror.workspace = true

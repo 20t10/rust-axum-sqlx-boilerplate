@@ -41,6 +41,7 @@ dependencies = [
  "building-blocks",
  "identity",
  "shared-kernel",
+ "thiserror",
  "tokio",
  "tower-http",
  "tracing",

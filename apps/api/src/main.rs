@@ -1,4 +1,4 @@
 #[tokio::main]
-async fn main() {
-    api::bootstrap::run().await.expect("api should start");
+async fn main() -> Result<(), api::bootstrap::StartupError> {
+    api::bootstrap::run().await
 }
