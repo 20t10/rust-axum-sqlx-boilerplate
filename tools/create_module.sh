@@ -64,7 +64,7 @@ fi
 if ! grep -q "^$module_name = " apps/api/Cargo.toml; then
   awk -v module="$module_name" '
     BEGIN { inserted = 0 }
-    /^shared-kernel = / && !inserted {
+    /^identity = / && !inserted {
       print
       print module " = { path = \"../../crates/modules/" module "\" }"
       inserted = 1

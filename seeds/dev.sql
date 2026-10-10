@@ -1,6 +1,6 @@
 insert into users (id, email, password_hash, role)
 values (
-    gen_random_uuid(),
+    uuidv7(),
     'admin@example.com',
     'hashed::password',
     'admin'

@@ -1,1 +1,0 @@
-// Application placeholder for billing.

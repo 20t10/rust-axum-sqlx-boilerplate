@@ -12,9 +12,5 @@ path = "src/lib.rs"
 axum.workspace = true
 building-blocks = { path = "../../crates/building-blocks" }
 identity = { path = "../../crates/modules/identity" }
-shared-kernel = { path = "../../crates/shared-kernel" }
-billing = { path = "../../crates/modules/billing" }
 tokio.workspace = true
-tower-http.workspace = true
-tracing.workspace = true
 thiserror.workspace = true

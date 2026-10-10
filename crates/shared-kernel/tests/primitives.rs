@@ -18,7 +18,8 @@ fn user_id_is_constructible() {
 
     assert_eq!(value.len(), 36);
     assert_eq!(value.matches('-').count(), 4);
-    assert!(uuid::Uuid::parse_str(&value).is_ok());
+    let parsed = uuid::Uuid::parse_str(&value).unwrap();
+    assert_eq!(parsed.get_version_num(), 7);
 }
 
 #[test]
